@@ -1,6 +1,6 @@
 # Severed-Enchantments
 
-* [Nexus Page]()
+* [Nexus Page](https://www.nexusmods.com/skyrimspecialedition/mods/192085)
 
 ## Compiling
 ```
