@@ -1,3 +1,9 @@
+// This file is an xEdit Skyrim Special Edition script meant to be applied on 
+// plugins of your liking in order to create an esp that overrides those armors
+// and weapons's plugins. I only used it on base game plugins (Skyrim.esm, 
+// Update.esm, Dawnguard.esm, Hearthfires.esm, Dragonborn.esm + all cc content
+// plugins) + USSEP
+
 unit SeveredEnchantmentsESPCreator;
 
 const
