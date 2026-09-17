@@ -1,11 +1,9 @@
 # dot folders
-.vs/
 .vscode/
 .xmake/
 
 # folders
 build/
-vs*/
+SeveredEnchantments (French)/
 
 # files
-*.zip
