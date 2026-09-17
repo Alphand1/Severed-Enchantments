@@ -5,7 +5,6 @@
 ## Compiling
 ```
 git submodule add -b ng https://github.com/alandtse/CommonLibSSE-NG.git lib/commonlibsse-ng
-xmake f --skyrim_vr=n
 xmake
 ```
 
