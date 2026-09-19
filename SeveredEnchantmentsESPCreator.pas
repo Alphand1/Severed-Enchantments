@@ -194,6 +194,162 @@ begin
   );
 end;
 
+function FindRecordByEditorID(
+  aFile: IwbFile;
+  aEditorID: string
+): IInterface;
+var
+  Group: IInterface;
+  i: Integer;
+  RecordElement: IInterface;
+begin
+  Result := nil;
+
+  Group := GroupBySignature(aFile, 'COBJ');
+
+  if not Assigned(Group) then
+    Exit;
+
+  for i := 0 to ElementCount(Group) - 1 do begin
+    RecordElement := ElementByIndex(Group, i);
+
+    if SameText(
+      GetElementEditValues(RecordElement, 'EDID'),
+      aEditorID
+    ) then begin
+      Result := RecordElement;
+      Exit;
+    end;
+  end;
+end;
+
+procedure CopyConstructibleObjects(
+  aOriginalRecord: IInterface;
+  aADRecord: IInterface
+);
+var
+  FileIndex: Integer;
+  COBJGroup: IInterface;
+  i: Integer;
+  COBJRecord: IInterface;
+  CreatedObject: IInterface;
+  NewCOBJ: IInterface;
+  COBJEditorID: string;
+  NewEditorID: string;
+begin
+  if not Assigned(aOriginalRecord) then
+    Exit;
+
+  if not Assigned(aADRecord) then
+    Exit;
+
+  AddMessage(
+    '[COBJ] Searching recipes for ' +
+    Name(aOriginalRecord)
+  );
+
+  // Search through every loaded plugin.
+  for FileIndex := 0 to FileCount - 1 do begin
+
+    // Do not search our output plugin.
+    if SameText(
+      GetFileName(FileByIndex(FileIndex)),
+      TARGET_FILE
+    ) then
+      Continue;
+
+    COBJGroup := GroupBySignature(
+      FileByIndex(FileIndex),
+      'COBJ'
+    );
+
+    if not Assigned(COBJGroup) then
+      Continue;
+
+    for i := 0 to ElementCount(COBJGroup) - 1 do begin
+
+      COBJRecord := ElementByIndex(COBJGroup, i);
+
+      if not Assigned(COBJRecord) then
+        Continue;
+
+      // Get the object produced by this recipe.
+      CreatedObject := LinksTo(
+        ElementByPath(COBJRecord, 'CNAM')
+      );
+
+      if not Assigned(CreatedObject) then
+        Continue;
+
+      // Is this recipe producing our original object?
+      if GetLoadOrderFormID(CreatedObject) <>
+         GetLoadOrderFormID(aOriginalRecord) then
+        Continue;
+
+      COBJEditorID := GetEditorID(COBJRecord);
+
+      AddMessage(
+        '[COBJ] Found recipe: ' +
+        COBJEditorID +
+        ' in ' +
+        GetFileName(GetFile(COBJRecord))
+      );
+
+      NewEditorID := 'SE_' + COBJEditorID;
+
+      // Don't create it twice.
+      if Assigned(
+        FindRecordByEditorID(
+          TargetFile,
+          NewEditorID
+        )
+      ) then begin
+        AddMessage(
+          '[COBJ] Already exists: ' +
+          NewEditorID
+        );
+        Continue;
+      end;
+
+      // Copy recipe into our plugin.
+      NewCOBJ := wbCopyElementToFile(
+        COBJRecord,
+        TargetFile,
+        True,
+        True
+      );
+
+      if not Assigned(NewCOBJ) then begin
+        AddMessage(
+          '[ERROR] Failed to copy COBJ: ' +
+          COBJEditorID
+        );
+        Continue;
+      end;
+
+      // Give it a unique EditorID.
+      SetElementEditValues(
+        NewCOBJ,
+        'EDID',
+        NewEditorID
+      );
+
+      // Make the recipe produce the unenchanted copy.
+      SetEditValue(
+        ElementByPath(NewCOBJ, 'CNAM'),
+        GetEditValue(aADRecord)
+      );
+
+      AddMessage(
+        '[COBJ] Created: ' +
+        NewEditorID +
+        ' -> ' +
+        GetEditorID(aADRecord)
+      );
+    end;
+  end;
+end;
+
 procedure CreateArtifact(aOfficialRecord: IInterface);
 var
   Winning: IInterface;
@@ -306,6 +462,19 @@ begin
   RemoveElement(ADRecord, 'EAMT');
 
   AddMessage(
+    '[TEST] Calling CopyConstructibleObjects...'
+  );
+
+  CopyConstructibleObjects(
+    aOfficialRecord,
+    ADRecord
+  );
+
+  AddMessage(
+    '[TEST] CopyConstructibleObjects finished.'
+  );
+
+  AddMessage(
     '[OK] Record created : ' +
     NewEditorID
   );
@@ -372,7 +541,7 @@ begin
   if not Assigned(TargetFile) then begin
     AddMessage('');
     AddMessage('[INFO] Creation of ' + TARGET_FILE);
-    TargetFile := AddNewFileName(TARGET_FILE);
+    TargetFile := AddNewFileName(TARGET_FILE, True);
   end;
 
   if not Assigned(TargetFile) then begin
